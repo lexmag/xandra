@@ -33,6 +33,9 @@ defmodule XandraTest do
       assert_raise ArgumentError, ~r{the :nodes option can't be an empty list}, fn ->
         Xandra.start_link(nodes: [])
       end
+
+      # IPv6 Connection
+      assert {:ok, _conn} = Xandra.start_link(nodes: ["127.0.0.1"], transport_options: [:inet6])
     end
 
     test "validates the :authentication option" do
@@ -191,6 +194,19 @@ defmodule XandraTest do
       assert :ok = Task.await(task)
 
       assert_received {[:xandra, :failed_to_connect], ^telemetry_ref, %{}, %{connection: ^conn}}
+    end
+
+    test "invalid transport option gets forcibly overwritten" do
+      telemetry_ref =
+        :telemetry_test.attach_event_handlers(self(), [[:xandra, :connected]])
+
+      # Set a transport option `active: true` that normally would cause the
+      # connection to fail. This connection should succeed because start_link
+      # forcibly overrides and sets some necessary options.
+      options = Keyword.merge(default_start_options(), transport_options: [active: true])
+
+      conn = start_supervised!({Xandra, options})
+      assert_receive {[:xandra, :connected], ^telemetry_ref, %{}, %{connection: ^conn}}
     end
   end
 

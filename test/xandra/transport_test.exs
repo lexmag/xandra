@@ -17,6 +17,18 @@ defmodule Xandra.TransportTest do
       assert %Transport{} = transport = Transport.close(transport)
       assert transport.socket == nil
     end
+
+    test "returns an IPv6-compatible transport" do
+      assert {:ok, listen_socket} = :gen_tcp.listen(0, [:inet6])
+      assert {:ok, port} = :inet.port(listen_socket)
+
+      transport = %Transport{module: :gen_tcp, options: [:inet6]}
+      assert {:ok, transport} = Transport.connect(transport, ~c"::1", port, 5000)
+      assert transport.socket != nil
+
+      assert %Transport{} = transport = Transport.close(transport)
+      assert transport.socket == nil
+    end
   end
 
   describe "is_* macros" do

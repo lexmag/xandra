@@ -420,16 +420,21 @@ defmodule Xandra.Connection do
         nil -> data.original_options
       end
 
+    # Construct the transport options.
+    {keyword_options, other_options} =
+      options
+      |> Keyword.get(:transport_options, [])
+      |> Enum.split_with(fn x -> Keyword.keyword?([x]) end)
+
     # Now, build the state from the options.
     {address, port} = Keyword.fetch!(options, :node)
 
     transport = %Transport{
       module: if(options[:encryption], do: :ssl, else: :gen_tcp),
       options:
-        options
-        |> Keyword.get(:transport_options, [])
-        |> Keyword.put_new(:buffer, @default_transport_buffer_size)
-        |> Keyword.merge(@forced_transport_options)
+        (keyword_options
+         |> Keyword.put_new(:buffer, @default_transport_buffer_size)
+         |> Keyword.merge(@forced_transport_options)) ++ other_options
     }
 
     data = %__MODULE__{

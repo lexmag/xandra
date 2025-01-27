@@ -102,9 +102,13 @@ defmodule Xandra.Cluster.ControlConnection do
 
     {transport_opts, connection_opts} = Keyword.pop(connection_opts, :transport_options, [])
 
+    # Construct the transport options.
+    {keyword_options, other_options} =
+      Enum.split_with(transport_opts, fn x -> Keyword.keyword?([x]) end)
+
     transport = %Transport{
       module: module,
-      options: Keyword.merge(transport_opts, @forced_transport_options)
+      options: Keyword.merge(keyword_options, @forced_transport_options) ++ other_options
     }
 
     {transport, connection_opts}

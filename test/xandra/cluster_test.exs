@@ -147,6 +147,19 @@ defmodule Xandra.ClusterTest do
         Xandra.Cluster.start_link(port: 9042)
       end
     end
+
+    test "with the :inet6 transport option" do
+      assert {:ok, _conn} = Xandra.Cluster.start_link(nodes: ["::1"], transport_options: [:inet6])
+
+      assert {:ok, _conn} =
+               Xandra.Cluster.start_link(nodes: ["::1:9042"], transport_options: [:inet6])
+
+      assert {:ok, _conn} =
+               Xandra.Cluster.start_link(nodes: ["[::1]"], transport_options: [:inet6])
+
+      assert {:ok, _conn} =
+               Xandra.Cluster.start_link(nodes: ["[::1]:9042"], transport_options: [:inet6])
+    end
   end
 
   describe "start_link/1" do
@@ -256,6 +269,16 @@ defmodule Xandra.ClusterTest do
       pid = start_link_supervised!({Cluster, opts})
       assert GenServer.whereis(name) == pid
       stop_supervised!(name)
+    end
+
+    @tag telemetry_events: [[:xandra, :connected]]
+    test "successfully connect even with an invalid transport option",
+         %{base_options: opts, telemetry_ref: telemetry_ref} do
+      opts = Keyword.merge(opts, transport_options: [active: true])
+      _pid = start_link_supervised!({Cluster, opts})
+
+      # Assert that we already received events.
+      assert_received {[:xandra, :connected], ^telemetry_ref, %{}, %{}}
     end
   end
 

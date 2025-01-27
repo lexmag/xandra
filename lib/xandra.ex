@@ -444,7 +444,7 @@ defmodule Xandra do
       """
     ],
     transport_options: [
-      type: :keyword_list,
+      type: {:or, [:keyword_list, {:list, :any}]},
       doc: """
       Options to forward to the socket transport. If the `:encryption` option is `true`,
       then the transport is SSL (see the Erlang `:ssl` module) otherwise it's

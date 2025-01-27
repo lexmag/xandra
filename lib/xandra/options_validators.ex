@@ -30,16 +30,35 @@ defmodule Xandra.OptionsValidators do
 
   @spec validate_node(term()) :: {:ok, {String.t(), integer()}} | {:error, String.t()}
   def validate_node(value) when is_binary(value) do
-    case String.split(value, ":", parts: 2) do
-      [address, port] ->
-        case Integer.parse(port) do
-          {port, ""} when port in 0..65535 -> {:ok, {address, port}}
-          {port, ""} -> {:error, "invalid port (outside of the 0..65535 range): #{port}"}
-          _ -> {:error, "invalid node: #{inspect(value)}"}
-        end
+    # Remove surrounding square brackets from IPv6 values.
+    value = value |> String.replace("[", "") |> String.replace("]", "")
 
-      [address] ->
-        {:ok, {address, 9042}}
+    {address, port} =
+      case String.split(value, ":") do
+        # FQDN or IPv4.
+        [address] ->
+          {address, "9042"}
+
+        # FQDN:PORT or IPv4:PORT. IPv6 addresses have to have at least 2 colons.
+        [address, port] ->
+          {address, port}
+
+        # IPv6.
+        splits ->
+          # Our IPv6 address can either parse as a valid address or have the
+          # additional port suffix.
+          with {:ok, {_, _, _, _, _, _, _, _}} <-
+                 :inet.parse_address(value |> String.to_charlist()) do
+            {value, "9042"}
+          else
+            _ -> {splits |> Enum.drop(-1) |> Enum.join(":"), List.last(splits)}
+          end
+      end
+
+    case Integer.parse(port) do
+      {port, ""} when port in 0..65535 -> {:ok, {address, port}}
+      {port, ""} -> {:error, "invalid port (outside of the 0..65535 range): #{port}"}
+      _ -> {:error, "invalid node: #{inspect(value)}"}
     end
   end
 
